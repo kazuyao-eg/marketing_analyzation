@@ -255,7 +255,8 @@ def main():
         st.markdown("---")
         st.subheader("属性構成（参考）")
 
-        col_a, col_b = st.columns(2)
+        # 3カラムに拡張（性別・在住国・CEFR）
+        col_a, col_b, col_c = st.columns(3)
 
         # 性別構成：件数(比率)
         with col_a:
@@ -292,6 +293,24 @@ def main():
             else:
                 country_dist["件数(比率)"] = "0(0%)"
             st.dataframe(country_dist[["在住国", "件数(比率)"]])
+
+        # CEFR構成：件数(比率)
+        with col_c:
+            st.caption("CEFR構成")
+            cefr_dist = (
+                df_filtered["CEFR"]
+                .value_counts(dropna=False)
+                .reset_index()
+            )
+            cefr_dist.columns = ["CEFR", "件数"]
+            total_cefr = cefr_dist["件数"].sum()
+            if total_cefr > 0:
+                cefr_dist["件数(比率)"] = cefr_dist["件数"].astype(int).astype(str) + "(" + (
+                    (cefr_dist["件数"] / total_cefr * 100).round(0).astype(int).astype(str) + "%)"
+                )
+            else:
+                cefr_dist["件数(比率)"] = "0(0%)"
+            st.dataframe(cefr_dist[["CEFR", "件数(比率)"]])
 
         st.markdown("---")
         st.subheader("属性クロス集計（件数）")
