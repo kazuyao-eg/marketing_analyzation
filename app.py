@@ -224,7 +224,6 @@ def main():
 
     # ===== サマリータブ =====
     with tab_summary:
-        # 月別 FC件数（性別では分けず合計のみ）
         st.subheader("月別 FC件数")
 
         monthly_fc = (
@@ -255,7 +254,6 @@ def main():
         st.markdown("---")
         st.subheader("属性構成（参考）")
 
-        # 3カラムに拡張（性別・在住国・CEFR）
         col_a, col_b, col_c = st.columns(3)
 
         # 性別構成：件数(比率)
@@ -315,17 +313,14 @@ def main():
         st.markdown("---")
         st.subheader("属性クロス集計（件数）")
 
-        # 性別 × 年代
         st.caption("性別 × 年代（件数）")
         ct_gender_age = pd.crosstab(df_filtered["性別"], df_filtered["年代"]).fillna(0).astype(int)
         st.dataframe(ct_gender_age)
 
-        # 性別 × CEFR
         st.caption("性別 × CEFR（件数）")
         ct_gender_cefr = pd.crosstab(df_filtered["性別"], df_filtered["CEFR"]).fillna(0).astype(int)
         st.dataframe(ct_gender_cefr)
 
-        # 年代 × CEFR
         st.caption("年代 × CEFR（件数）")
         ct_age_cefr = pd.crosstab(df_filtered["年代"], df_filtered["CEFR"]).fillna(0).astype(int)
         st.dataframe(ct_age_cefr)
@@ -334,18 +329,18 @@ def main():
     with tab_segment:
         st.subheader(f"チャネル別（{filters['channel_axis']}） 入会分析")
 
-        # 表示形式の切替（チャネル・性別・年代・在住国の折れ線グラフで共通）
+        channel_col = filters["channel_axis"]
+
+        # チャネル別サマリー（テーブル表示） ← 先に表
+        channel_summary = aggregate_channel_summary(df_filtered, channel_col)
+        st.dataframe(channel_summary.sort_values("FC件数", ascending=False), use_container_width=True)
+
+        # 表示形式の切り替え（表の下・グラフの上）
         display_mode = st.radio(
             "表示形式の切り替え",
             options=["絶対数（件数）", "割合（構成比）"],
             horizontal=True
         )
-
-        channel_col = filters["channel_axis"]
-
-        # チャネル別サマリー（テーブル表示）
-        channel_summary = aggregate_channel_summary(df_filtered, channel_col)
-        st.dataframe(channel_summary.sort_values("FC件数", ascending=False), use_container_width=True)
 
         st.markdown("### 上位チャネル（5件）の月別推移")
 
@@ -500,7 +495,6 @@ def main():
             horizontal=True
         )
 
-        # 1つ目：月ごとの FC件数に対する CEFR 別件数
         st.caption("月別 FC件数に対する CEFR 別構成比")
         cefr_month_fc = monthly_composition(df_filtered, "CEFR")
 
@@ -532,7 +526,6 @@ def main():
             )
             st.altair_chart(chart_cefr_fc, use_container_width=True)
 
-        # 2つ目：月ごとの入会件数に対する CEFR 別入会件数
         st.caption("月別 入会件数に対する CEFR 別構成比（入会者ベース）")
         cefr_month_member = monthly_composition_for_members(df_filtered, "CEFR")
 
