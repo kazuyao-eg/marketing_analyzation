@@ -310,12 +310,12 @@ def main():
 
         with col_a:
             st.caption("性別構成")
-            gender_dist = (
+           gender_dist = (
                 df_filtered["性別"]
                 .value_counts(dropna=False)
                 .reset_index()
-                .rename(columns={"index": "性別", "性別": "件数"})
             )
+            gender_dist.columns = ["性別", "件数"]
             gender_dist["比率"] = gender_dist["件数"] / gender_dist["件数"].sum()
             st.dataframe(gender_dist)
 
@@ -325,8 +325,8 @@ def main():
                 df_filtered["在住国"]
                 .value_counts(dropna=False)
                 .reset_index()
-                .rename(columns={"index": "在住国", "在住国": "件数"})
             )
+            country_dist.columns = ["在住国", "件数"]
             country_dist["比率"] = country_dist["件数"] / country_dist["件数"].sum()
             st.dataframe(country_dist)
 
