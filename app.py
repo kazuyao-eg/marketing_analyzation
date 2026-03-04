@@ -11,26 +11,21 @@ st.set_page_config(
 @st.cache_data
 def load_data(path: str) -> pd.DataFrame:
     df = pd.read_csv(path)
-    # 日付変換
     df["FC実施年月日"] = pd.to_datetime(df["FC実施年月日"], errors="coerce")
-    # 年月列（例: 2022-01）
     df["年月"] = df["FC実施年月日"].dt.to_period("M").astype(str)
 
-    # 入会フラグ・二値ステータス
     df["入会フラグ"] = np.where(df["ステータス"] == "入会", 1, 0)
     df["入会ステータス"] = np.where(df["入会フラグ"] == 1, "入会", "非入会")
 
-    # カテゴリの順序（年代）
     age_order = ["10代前半", "18〜25", "26〜30", "31〜35", "36〜45", "46〜60", "61以上", "不明"]
     df["年代"] = pd.Categorical(df["年代"], categories=age_order, ordered=True)
 
     return df
 
 
-def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
+def apply_filters(df: pd.DataFrame) -> tuple:
     st.sidebar.header("フィルタ")
 
-    # 年月フィルタ
     month_list = (
         df["年月"]
         .dropna()
@@ -40,7 +35,7 @@ def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
     )
     if len(month_list) == 0:
         st.error("年月データが存在しません。`FC実施年月日` の形式を確認してください。")
-        return df
+        return df, None
 
     start_month, end_month = st.sidebar.select_slider(
         "表示期間（年月）",
@@ -48,11 +43,9 @@ def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
         value=(month_list[0], month_list[-1])
     )
 
-    # 年月範囲でフィルタ
     month_mask = (df["年月"] >= start_month) & (df["年月"] <= end_month)
     df = df.loc[month_mask].copy()
 
-    # 性別フィルタ
     genders = df["性別"].dropna().unique().tolist()
     selected_genders = st.sidebar.multiselect(
         "性別",
@@ -62,7 +55,6 @@ def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
     if selected_genders:
         df = df[df["性別"].isin(selected_genders)]
 
-    # 年代フィルタ
     ages = df["年代"].dropna().unique().tolist()
     selected_ages = st.sidebar.multiselect(
         "年代",
@@ -72,7 +64,6 @@ def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
     if selected_ages:
         df = df[df["年代"].isin(selected_ages)]
 
-    # 在住国フィルタ
     countries = df["在住国"].dropna().unique().tolist()
     selected_countries = st.sidebar.multiselect(
         "在住国",
@@ -82,7 +73,6 @@ def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
     if selected_countries:
         df = df[df["在住国"].isin(selected_countries)]
 
-    # CEFR フィルタ
     cefrs = df["CEFR"].dropna().unique().tolist()
     selected_cefrs = st.sidebar.multiselect(
         "CEFR",
@@ -92,7 +82,6 @@ def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
     if selected_cefrs:
         df = df[df["CEFR"].isin(selected_cefrs)]
 
-    # チャネル軸の選択（デフォルト: 集客経路）
     channel_axis = st.sidebar.radio(
         "チャネル軸の選択",
         options=["集客経路", "流入経路", "識別用のラベル"],
@@ -100,7 +89,6 @@ def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
         help="標準は『集客経路』。必要に応じて他の軸でも分析できます。"
     )
 
-    # チャネルの上位何件を表示するか
     top_n = st.sidebar.slider(
         "チャネル表示数（上位 N 件）",
         min_value=5,
@@ -109,7 +97,6 @@ def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
         step=1
     )
 
-    # チャネルの最低件数フィルタ
     min_count = st.sidebar.slider(
         "チャネルの最低 FC 件数（この件数未満は『その他』に集約）",
         min_value=1,
@@ -180,7 +167,6 @@ def aggregate_channel(df: pd.DataFrame, col: str, top_n: int, min_count: int) ->
         np.nan
     )
 
-    # 件数が少なすぎるチャネルをその他へ
     major = base[base["FC件数"] >= min_count].copy()
     minor = base[base["FC件数"] < min_count].copy()
 
@@ -199,7 +185,6 @@ def aggregate_channel(df: pd.DataFrame, col: str, top_n: int, min_count: int) ->
     else:
         base = major
 
-    # FC件数の多い順に上位 N を残し、残りを「その他（上位外）」にまとめる
     base = base.sort_values("FC件数", ascending=False)
     top = base.head(top_n).copy()
     rest = base.iloc[top_n:].copy()
@@ -245,7 +230,6 @@ def main():
         "月別の推移・属性別の構成・チャネル別・CEFR別の入会率を把握するためのダッシュボードです。"
     )
 
-    # データ読み込み
     try:
         df_raw = load_data("fc_info.csv")
     except FileNotFoundError:
@@ -254,11 +238,13 @@ def main():
 
     df_filtered, filters = apply_filters(df_raw)
 
+    if filters is None:
+        return
+
     if df_filtered.empty:
         st.warning("現在のフィルタ条件ではデータがありません。条件を緩めてみてください。")
         return
 
-    # タブ
     tab_summary, tab_segment, tab_cefr = st.tabs(["サマリー", "流入像（属性・チャネル）", "CEFR分析"])
 
     # ===== サマリータブ =====
@@ -310,7 +296,7 @@ def main():
 
         with col_a:
             st.caption("性別構成")
-           gender_dist = (
+            gender_dist = (
                 df_filtered["性別"]
                 .value_counts(dropna=False)
                 .reset_index()
@@ -340,7 +326,6 @@ def main():
             horizontal=True
         )
 
-        # 性別
         seg_gender = aggregate_segment(df_filtered, "性別")
         seg_gender_chart = alt.Chart(seg_gender).mark_bar().encode(
             x=alt.X("性別:N", title="性別"),
@@ -355,7 +340,6 @@ def main():
         )
         st.altair_chart(seg_gender_chart, use_container_width=True)
 
-        # 年代
         seg_age = aggregate_segment(df_filtered, "年代")
         seg_age_chart = alt.Chart(seg_age).mark_bar().encode(
             x=alt.X("年代:N", title="年代", sort=seg_age["年代"].cat.categories.tolist() if hasattr(seg_age["年代"], "cat") else alt.SortField("年代")),
