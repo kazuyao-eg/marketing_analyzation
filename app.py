@@ -224,35 +224,31 @@ def main():
 
     # ===== サマリータブ =====
     with tab_summary:
-        # 変更点1：KPIサマリー削除済み
+        # 月別 FC件数（性別では分けず合計のみ）
+        st.subheader("月別 FC件数")
 
-        st.subheader("月別 FC件数（性別別推移）")
-
-        # 月別 × 性別 の FC件数
-        gender_month = (
+        monthly_fc = (
             df_filtered
-            .groupby(["年月", "性別"])
+            .groupby("年月")
             .size()
             .reset_index(name="件数")
         )
 
-        if not gender_month.empty:
-            gender_chart = (
-                alt.Chart(gender_month)
+        if not monthly_fc.empty:
+            fc_chart = (
+                alt.Chart(monthly_fc)
                 .mark_line(point=True)
                 .encode(
-                    x=alt.X("年月:N", sort=sorted(gender_month["年月"].unique()), title="年月"),
+                    x=alt.X("年月:N", sort=sorted(monthly_fc["年月"].unique()), title="年月"),
                     y=alt.Y("件数:Q", title="月別 FC件数"),
-                    color=alt.Color("性別:N", title="性別"),
                     tooltip=[
                         alt.Tooltip("年月:N", title="年月"),
-                        alt.Tooltip("性別:N", title="性別"),
                         alt.Tooltip("件数:Q", title="件数", format=",d"),
                     ],
                 )
                 .properties(height=300)
             )
-            st.altair_chart(gender_chart, use_container_width=True)
+            st.altair_chart(fc_chart, use_container_width=True)
         else:
             st.info("表示可能なデータがありません。")
 
