@@ -4,7 +4,7 @@ import streamlit as st
 import altair as alt
 
 st.set_page_config(
-    page_title="属性別流入ダッシュボード",
+    page_title="流入顧客セグメント分析",
     layout="wide"
 )
 
@@ -200,10 +200,6 @@ def monthly_composition_for_members(df: pd.DataFrame, group_col: str) -> pd.Data
 
 def main():
     st.title("属性別流入ダッシュボード")
-
-    st.markdown(
-        "月別の推移・属性別の構成・チャネル別・CEFR別の流入数、入会率を把握するためのダッシュボードです。"
-    )
 
     # データ読み込み
     try:
